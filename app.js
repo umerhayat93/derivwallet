@@ -33,7 +33,72 @@ function hideReceipt(){$('#receipt-overlay').classList.remove('visible');}
 const EYE_ON=`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
 const EYE_OFF=`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
 function toggleBalance(){State.balanceVisible=!State.balanceVisible;const el=$('#bal-amount'),icon=$('#bal-eye');if(State.balanceVisible){el.classList.remove('balance-blur');el.textContent=fmt(State.balance);icon.innerHTML=EYE_ON;}else{el.classList.add('balance-blur');el.textContent='••••••';icon.innerHTML=EYE_OFF;}}
-function handleLogin(e){e.preventDefault();const user=$('#login-user').value.trim(),pass=$('#login-pass').value;if(!user||!pass){toast('Please enter your credentials','error');return;}const btn=$('#login-btn');btn.textContent='Signing in...';btn.disabled=true;setTimeout(()=>{btn.textContent='Sign In';btn.disabled=false;if(user==='umerhayat1993'&&pass==='umer0895'){if(!State.user){State.user={name:'Umer Hayat',email:'umer@derivwallet.app',username:'umerhayat1993',accountNumber:'1234567890'};State.save();}loginSuccess();}else{const users=JSON.parse(localStorage.getItem('dw_users')||'[]');const found=users.find(u=>u.username===user);if(found){showPopup('Account Pending Approval','Your account is under review by the Deriv Wallet Team. You will be notified once approved and activated.','⏳');}else{toast('Invalid username or password','error');$('#login-user').style.borderColor=ACCENT;setTimeout(()=>$('#login-user').style.borderColor='',2000);}}},900);}
+function handleLogin(e){
+  e.preventDefault();
+
+  const user = $('#login-user').value.trim();
+  const pass = $('#login-pass').value;
+
+  if(!user || !pass){
+    toast('Please enter your credentials','error');
+    return;
+  }
+
+  const btn = $('#login-btn');
+  btn.textContent = 'Signing in...';
+  btn.disabled = true;
+
+  setTimeout(()=>{
+    btn.textContent = 'Sign In';
+    btn.disabled = false;
+
+    // ✅ HARDCODED USERS
+    if(
+      (user === 'umerhayat1993' && pass === 'umer0895') ||
+      (user === 'robinmasih101' && pass === 'robin@101')
+    ){
+
+      // 🔹 Assign user based on login
+      if(user === 'umerhayat1993'){
+        State.user = {
+          name: 'Umer Hayat',
+          email: 'umer@derivwallet.app',
+          username: 'umerhayat1993',
+          accountNumber: 'CR4567890'
+        };
+      }
+
+      if(user === 'robinmasih101'){
+        State.user = {
+          name: 'Robin Masih',
+          email: 'robinmashih@deriv.com',
+          username: 'robinmasih101',
+          accountNumber: 'CR76543210'
+        };
+      }
+
+      State.save();
+      loginSuccess();
+
+    } else {
+      const users = JSON.parse(localStorage.getItem('dw_users') || '[]');
+      const found = users.find(u => u.username === user);
+
+      if(found){
+        showPopup(
+          'Account Pending Approval',
+          'Your account is under review by the Deriv Wallet Team. You will be notified once approved and activated.',
+          '⏳'
+        );
+      } else {
+        toast('Invalid username or password','error');
+        $('#login-user').style.borderColor = ACCENT;
+        setTimeout(()=>$('#login-user').style.borderColor='',2000);
+      }
+    }
+
+  }, 900);
+}
 function loginSuccess(){localStorage.setItem('dw_session','1');State.isLoggedIn=true;toast('Welcome back! 👋','success');Screens.show('home');setTimeout(()=>{if(State.deferredInstallPrompt)$('#install-banner').classList.add('visible');},3000);}
 function handleLogout(){localStorage.removeItem('dw_session');State.isLoggedIn=false;State.user=null;closeSidebar();setTimeout(()=>Screens.show('login'),200);toast('Logged out','info');}
 function showRegister(){$('#login-section').style.display='none';$('#register-section').style.display='block';}
