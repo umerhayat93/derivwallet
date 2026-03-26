@@ -1,10 +1,40 @@
 // ===== DERIV WALLET APP.JS =====
 'use strict';
 const ACCENT = '#ff4436';
+
+// Hardcoded users — each gets their own isolated storage
+const HARDCODED_USERS = {
+  'umerhayat1993': { password:'umer0895', name:'Umer Hayat', email:'umer@derivwallet.app', accountNumber:'1234567890' },
+  'robinmasih101':  { password:'robin@101', name:'Robin Masih', email:'robin@derivwallet.app', accountNumber:'9876543210' }
+};
+
 const State = {
   currentScreen:'login',isLoggedIn:false,balanceVisible:true,user:null,deferredInstallPrompt:null,balance:0,transactions:[],
-  load(){try{const s=localStorage.getItem('dw_user');if(s)this.user=JSON.parse(s);const b=localStorage.getItem('dw_balance');this.balance=b!==null?parseFloat(b):0;const t=localStorage.getItem('dw_transactions');this.transactions=t?JSON.parse(t):[];if(localStorage.getItem('dw_session'))this.isLoggedIn=true;}catch(e){}},
-  save(){try{if(this.user)localStorage.setItem('dw_user',JSON.stringify(this.user));localStorage.setItem('dw_balance',this.balance.toString());localStorage.setItem('dw_transactions',JSON.stringify(this.transactions));}catch(e){}},
+  _key(k){ return `dw_${this.user?.username}_${k}`; },
+  load(){
+    try{
+      const s=localStorage.getItem('dw_session_user');
+      if(s){
+        const username=s;
+        const hc=HARDCODED_USERS[username];
+        if(hc){ this.user={...hc,username}; this.isLoggedIn=true; }
+      }
+      if(this.user){
+        const b=localStorage.getItem(this._key('balance'));
+        this.balance=b!==null?parseFloat(b):0;
+        const t=localStorage.getItem(this._key('transactions'));
+        this.transactions=t?JSON.parse(t):[];
+      }
+    }catch(e){}
+  },
+  save(){
+    try{
+      if(this.user){
+        localStorage.setItem(this._key('balance'),this.balance.toString());
+        localStorage.setItem(this._key('transactions'),JSON.stringify(this.transactions));
+      }
+    }catch(e){}
+  },
   addTransaction(tx){this.transactions.unshift({...tx,id:Date.now(),date:new Date().toISOString()});if(this.transactions.length>100)this.transactions.pop();this.save();}
 };
 const $=s=>document.querySelector(s);
@@ -33,74 +63,25 @@ function hideReceipt(){$('#receipt-overlay').classList.remove('visible');}
 const EYE_ON=`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
 const EYE_OFF=`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
 function toggleBalance(){State.balanceVisible=!State.balanceVisible;const el=$('#bal-amount'),icon=$('#bal-eye');if(State.balanceVisible){el.classList.remove('balance-blur');el.textContent=fmt(State.balance);icon.innerHTML=EYE_ON;}else{el.classList.add('balance-blur');el.textContent='••••••';icon.innerHTML=EYE_OFF;}}
-function handleLogin(e){
-  e.preventDefault();
-
-  const user = $('#login-user').value.trim();
-  const pass = $('#login-pass').value;
-
-  if(!user || !pass){
-    toast('Please enter your credentials','error');
-    return;
+function handleLogin(e){e.preventDefault();const user=$('#login-user').value.trim(),pass=$('#login-pass').value;if(!user||!pass){toast('Please enter your credentials','error');return;}const btn=$('#login-btn');btn.textContent='Signing in...';btn.disabled=true;setTimeout(()=>{btn.textContent='Sign In';btn.disabled=false;
+  const hc=HARDCODED_USERS[user];
+  if(hc&&pass===hc.password){
+    State.user={...hc,username:user};
+    const b=localStorage.getItem(State._key('balance'));
+    State.balance=b!==null?parseFloat(b):0;
+    const t=localStorage.getItem(State._key('transactions'));
+    State.transactions=t?JSON.parse(t):[];
+    localStorage.setItem('dw_session_user',user);
+    loginSuccess();
+  }else{
+    const users=JSON.parse(localStorage.getItem('dw_users')||'[]');
+    const found=users.find(u=>u.username===user);
+    if(found){showPopup('Account Pending Approval','Your account is under review by the Deriv Wallet Team. You will be notified once approved and activated.','⏳');}
+    else{toast('Invalid username or password','error');$('#login-user').style.borderColor=ACCENT;setTimeout(()=>$('#login-user').style.borderColor='',2000);}
   }
-
-  const btn = $('#login-btn');
-  btn.textContent = 'Signing in...';
-  btn.disabled = true;
-
-  setTimeout(()=>{
-    btn.textContent = 'Sign In';
-    btn.disabled = false;
-
-    // ✅ HARDCODED USERS
-    if(
-      (user === 'umerhayat1993' && pass === 'umer0895') ||
-      (user === 'robinmasih101' && pass === 'robin@101')
-    ){
-
-      // 🔹 Assign user based on login
-      if(user === 'umerhayat1993'){
-        State.user = {
-          name: 'Umer Hayat',
-          email: 'umer@derivwallet.app',
-          username: 'umerhayat1993',
-          accountNumber: 'CR4567890'
-        };
-      }
-
-      if(user === 'robinmasih101'){
-        State.user = {
-          name: 'Robin Masih',
-          email: 'robinmashih@deriv.com',
-          username: 'robinmasih101',
-          accountNumber: 'CR76543210'
-        };
-      }
-
-      State.save();
-      loginSuccess();
-
-    } else {
-      const users = JSON.parse(localStorage.getItem('dw_users') || '[]');
-      const found = users.find(u => u.username === user);
-
-      if(found){
-        showPopup(
-          'Account Pending Approval',
-          'Your account is under review by the Deriv Wallet Team. You will be notified once approved and activated.',
-          '⏳'
-        );
-      } else {
-        toast('Invalid username or password','error');
-        $('#login-user').style.borderColor = ACCENT;
-        setTimeout(()=>$('#login-user').style.borderColor='',2000);
-      }
-    }
-
-  }, 900);
-}
-function loginSuccess(){localStorage.setItem('dw_session','1');State.isLoggedIn=true;toast('Welcome back! 👋','success');Screens.show('home');setTimeout(()=>{if(State.deferredInstallPrompt)$('#install-banner').classList.add('visible');},3000);}
-function handleLogout(){localStorage.removeItem('dw_session');State.isLoggedIn=false;State.user=null;closeSidebar();setTimeout(()=>Screens.show('login'),200);toast('Logged out','info');}
+},900);}
+function loginSuccess(){State.isLoggedIn=true;toast('Welcome back! 👋','success');Screens.show('home');setTimeout(()=>{if(State.deferredInstallPrompt)$('#install-banner').classList.add('visible');},3000);}
+function handleLogout(){localStorage.removeItem('dw_session_user');State.isLoggedIn=false;State.user=null;State.balance=0;State.transactions=[];closeSidebar();setTimeout(()=>Screens.show('login'),200);toast('Logged out','info');}
 function showRegister(){$('#login-section').style.display='none';$('#register-section').style.display='block';}
 function showLogin(){$('#login-section').style.display='block';$('#register-section').style.display='none';}
 function handleRegister(e){e.preventDefault();const name=$('#reg-name').value.trim(),email=$('#reg-email').value.trim(),phone=$('#reg-phone').value.trim(),country=$('#reg-country').value,username=$('#reg-username').value.trim(),password=$('#reg-password').value;if(!name||!email||!phone||!country||!username||!password){toast('Please fill all fields','error');return;}if(password.length<6){toast('Password must be at least 6 characters','error');return;}const users=JSON.parse(localStorage.getItem('dw_users')||'[]');if(users.find(u=>u.username===username)){toast('Username already taken','error');return;}users.push({name,email,phone,country,username,password,accountNumber:genAcct(),status:'pending'});localStorage.setItem('dw_users',JSON.stringify(users));showLogin();['reg-name','reg-email','reg-phone','reg-username','reg-password'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const rc=document.getElementById('reg-country');if(rc)rc.value='';setTimeout(()=>{showPopup('Account Pending Approval','Your Deriv Wallet account has been submitted and is pending review by the Deriv Wallet Team. You will be notified once your account is approved and activated.','⏳');},300);}
